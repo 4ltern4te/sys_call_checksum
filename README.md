@@ -7,3 +7,6 @@ in certain environments that you might not be able to replatform
 or replatform quickly. Was mostly an exercise in better understanding Linux internals and code.
 A beer owed to vrasneur@free.fr for the code I have reused, thanks for publishing yours it was helpful to learn from.
 Also thanks to 0xAX for linux-insides as it helped me appreciate a lot.
+
+## TODO
+Going to add module params to specify a time interval in which to perform the checksum. Or some other interface to trigger the checksum.
