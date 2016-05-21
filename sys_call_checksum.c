@@ -17,16 +17,35 @@
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 #include <asm/syscall.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+#include <linux/sched.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("alternate");
-MODULE_DESCRIPTION("Create a sha256 sum of the system call table");
+MODULE_DESCRIPTION("Create a sha256 sum of the system call table every N seconds");
 MODULE_VERSION("0.1");
 
 #define OFFSET_SYSCALL 256
 int hash_sys_call_table(void **sys_call_tble);
-
 static void **s_call_table = NULL;
+
+
+void hash_thirty(void *data);
+
+DECLARE_DELAYED_WORK(work, hash_thirty);
+
+/*HZ is the number of jiffies per second times them by 30 for 30 seconds. This
+ * should really be a module param*/
+int delay = HZ * 30;
+
+void hash_thirty(void *data)
+{
+	/* call the hash function and reschedule the work */
+	hash_sys_call_table(s_call_table);
+	schedule_delayed_work(&work, delay);
+
+}
 
 static void const *rk_memmem(void const *haystack, size_t hl,
                              void const *needle, size_t nl)
@@ -90,12 +109,6 @@ int hash_sys_call_table(void **sys_call_tble) {
     memset(hashtext, 0x00, sizeof(hashtext));
     memset(table_array, 0x00, sizeof(table_array));
 
-    /* DEBUG
-    int z = 0;
-    for (z=0; z <= __NR_syscall_max; z++) {
-	printk(KERN_INFO "%s syscall %d:%p", KBUILD_MODNAME, z, table[z]);
-    }*/
-
     for (x=0; x < __NR_syscall_max; x++) {
 	n = snprintf(NULL, 0, "%p", sys_call_tble[x]);
 	snprintf(p, n+1, "%p", sys_call_tble[x]);
@@ -111,6 +124,8 @@ int hash_sys_call_table(void **sys_call_tble) {
     crypto_hash_update(&desc, &sg, table_len);
     crypto_hash_final(&desc, hashtext);
 
+
+    printk(KERN_DEBUG "%s: ", KBUILD_MODNAME);
     for(i = 0; i < strlen(hashtext); i++) {
         printk("%02x", hashtext[i]);
     }
@@ -125,13 +140,22 @@ int hash_sys_call_table(void **sys_call_tble) {
 static int __init mod_init(void) {
 
         printk(KERN_DEBUG "%s loaded\n", KBUILD_MODNAME);
+
 	s_call_table = rk_find_syscall_table();
 	hash_sys_call_table(s_call_table);
+	schedule_delayed_work(&work, delay);
+
 	return 0;
 }
 
 static void __exit mod_exit(void) {
-        printk(KERN_DEBUG "%s unloaded\n", KBUILD_MODNAME);
+
+	printk(KERN_DEBUG "%s unloaded\n", KBUILD_MODNAME);
+
+	/* These 2 lines or crash */
+	cancel_delayed_work(&work);
+	flush_scheduled_work();
+
 	return;
 }
 
