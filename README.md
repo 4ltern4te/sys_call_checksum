@@ -1,6 +1,9 @@
 # sys_call_checksum
 Sha256 the system call table on a x86_64 Linux machine every N seconds.
 
+`insmod sys_call_checksum seconds=N`
+
+
 I know this "defence" has its weaknesses but inserted to run
 at initramfs with centralised logging it can prove to be useful
 in certain environments that you might not be able to replatform
@@ -13,4 +16,4 @@ A beer owed to vrasneur@free.fr for the code I have reused, thanks for publishin
 Also thanks to 0xAX for linux-insides as it helped me appreciate a lot.
 
 ## TODO
-Make the time specified a module param.
+Find a way to stop the module from being tampered with or unloaded.

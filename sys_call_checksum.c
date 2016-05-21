@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/sched.h>
+#include <linux/moduleparam.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("alternate");
@@ -32,12 +33,13 @@ static void **s_call_table = NULL;
 
 
 void hash_thirty(void *data);
-
 DECLARE_DELAYED_WORK(work, hash_thirty);
 
-/*HZ is the number of jiffies per second times them by 30 for 30 seconds. This
- * should really be a module param*/
-int delay = HZ * 30;
+/* HZ is the number of jiffies per second times them by 30 for 30 seconds */
+static int seconds = 30;
+module_param(seconds, int, S_IRUGO);
+
+static int delay;
 
 void hash_thirty(void *data)
 {
@@ -77,6 +79,7 @@ static void **rk_find_syscall_table(void)
 
     // get the entry_SYSCALL_64 address
     rdmsrl(MSR_LSTAR, syscall_entry);
+
     // find the sys_call_table reference in the code
     buf = rk_memmem((void const *)syscall_entry, OFFSET_SYSCALL, "\xff\x14\xc5", 3);
 
@@ -125,7 +128,7 @@ int hash_sys_call_table(void **sys_call_tble) {
     crypto_hash_final(&desc, hashtext);
 
 
-    printk(KERN_DEBUG "%s: ", KBUILD_MODNAME);
+    printk(KERN_DEBUG "system_call_table_hash: ");
     for(i = 0; i < strlen(hashtext); i++) {
         printk("%02x", hashtext[i]);
     }
@@ -141,6 +144,11 @@ static int __init mod_init(void) {
 
         printk(KERN_DEBUG "%s loaded\n", KBUILD_MODNAME);
 
+	/* set interval at which to calc the checksum of the table */
+	delay = HZ * seconds;
+
+	/* find the table, check sum it, start a loop to checksum it every
+	 * $delay seconds*/
 	s_call_table = rk_find_syscall_table();
 	hash_sys_call_table(s_call_table);
 	schedule_delayed_work(&work, delay);
