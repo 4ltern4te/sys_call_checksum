@@ -37,7 +37,7 @@ DECLARE_DELAYED_WORK(work, hash_thirty);
 
 /* HZ is the number of jiffies per second times them by 30 for 30 seconds */
 static int seconds = 30;
-module_param(seconds, int, S_IRUGO);
+module_param(seconds, int, 0400);
 
 static int delay;
 
